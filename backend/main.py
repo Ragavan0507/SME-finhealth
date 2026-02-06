@@ -103,13 +103,19 @@ async def upload_financials(file: UploadFile = File(...), industry: str = "Gener
         advice_en = (f"As a {industry} enterprise, your profit margin of {margin}% is {health_status}. "
                      f"Your estimated GST liability is ₹{tax_estimate}. Next quarter revenue is forecasted at ₹{growth_forecast}.")
 
+
+# In your return statement at the bottom of upload_financials:
         return {
-            "revenue": total_rev, "expense": total_exp, "profit": profit, "margin": margin,
-            "tax_est": tax_estimate, "forecast": growth_forecast, "health": health_status,
-            "credit_score": credit_rating, "security": "AES-256 Active",
+            "total_rev": total_rev,      # Changed from 'revenue'
+            "expense": total_exp,
+            "margin": profit,            # Match the frontend's 'Net Profit' label
+            "tax_estimate": tax_estimate, # Changed from 'tax_est'
+            "forecast": growth_forecast,
+            "health": health_status,
+            "credit_rating": credit_rating, # Changed from 'credit_score'
+            "security": "AES-256 Active",
             "advice": {"en": advice_en}
         }
-
     except Exception as e:
         return {"error": f"Analysis failed: {str(e)}"}
 
@@ -118,3 +124,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
 
     uvicorn.run(app, host="0.0.0.0", port=port)
+
