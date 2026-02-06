@@ -9,3 +9,4 @@ mysql-connector-python
 python-multipart
 openpyxl
 python-dotenv
+pymysql
