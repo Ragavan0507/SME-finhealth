@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+gunicorn
+pandas
+pdfplumber
+cryptography
+sqlalchemy
+mysql-connector-python
+python-multipart
+openpyxl
+python-dotenv
