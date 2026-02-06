@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Cell, Legend } from 'recharts';
 
-// This line allows the app to use the live URL in production and localhost in development
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 function App() {
@@ -14,27 +13,32 @@ function App() {
   const handleUpload = async () => {
     if (!file) return alert("Please select a file (CSV, XLSX, or PDF) first!");
     setLoading(true);
+    setResult(null); // Clear previous results before starting
     
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      // Points to the dynamic API_BASE_URL
       const response = await axios.post(`${API_BASE_URL}/upload?industry=${industry}`, formData);
+      console.log("Backend Response:", response.data); // Helpful for debugging in browser console
       setResult(response.data);
     } catch (error) {
-      console.error(error);
-      alert("Analysis failed. Check if the backend is live and the database is connected.");
+      console.error("Upload Error:", error);
+      alert("Analysis failed. Please check if your backend is running.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Fixed mapping: using the exact keys returned from main.py
+  /**
+   * MAPPING CHECK:
+   * We use "|| 0" so that if the backend sends 'total_rev' instead of 'revenue', 
+   * the chart just shows 0 rather than breaking the whole page.
+   */
   const chartData = result ? [
-    { name: 'Revenue', value: result.revenue || 0 },
+    { name: 'Revenue', value: result.revenue || result.total_rev || 0 },
     { name: 'Expense', value: result.expense || 0 },
-    { name: 'Profit', value: result.profit || 0 }
+    { name: 'Profit', value: result.profit || result.margin || 0 }
   ] : [];
 
   return (
@@ -96,14 +100,14 @@ function App() {
       {result && (
         <div className="dashboard-content">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-            {/* Syncing variable names with Backend return keys */}
-            <MetricCard title="Total Revenue" value={`₹${(result.revenue || 0).toLocaleString()}`} color="#3b82f6" />
-            <MetricCard title="Net Profit" value={`₹${(result.profit || 0).toLocaleString()}`} color="#10b981" />
-            <MetricCard title="Tax Liability (GST)" value={`₹${(result.tax_est || 0).toLocaleString()}`} color="#f59e0b" />
-            <MetricCard title="Credit Score" value={result.credit_score || "N/A"} color={result.credit_score === "High" ? "#059669" : "#dc2626"} />
+            {/* Added fallback keys (revenue/total_rev and profit/margin) to ensure values show up */}
+            <MetricCard title="Total Revenue" value={`₹${(result.revenue || result.total_rev || 0).toLocaleString()}`} color="#3b82f6" />
+            <MetricCard title="Net Profit" value={`₹${(result.profit || result.margin || 0).toLocaleString()}`} color="#10b981" />
+            <MetricCard title="Tax Liability (GST)" value={`₹${(result.tax_estimate || result.tax_est || 0).toLocaleString()}`} color="#f59e0b" />
+            <MetricCard title="Credit Score" value={result.credit_rating || result.credit_score || "N/A"} color={(result.credit_rating || result.credit_score) === "High" ? "#059669" : "#dc2626"} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
             <div style={{ background: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', minHeight: '400px' }}>
               <h3 style={{ marginTop: 0, color: '#1e293b', marginBottom: '20px' }}>Cash Flow Breakdown</h3>
               <ResponsiveContainer width="100%" height={300}>
@@ -129,7 +133,7 @@ function App() {
               
               <div style={{ marginBottom: '20px', background: '#f8fafc', padding: '15px', borderRadius: '10px' }}>
                 <p style={{ fontWeight: '700', color: '#2563eb', margin: '0 0 5px 0' }}>English Report:</p>
-                <p style={{ color: '#334155', lineHeight: '1.6', margin: 0 }}>{result.advice?.en}</p>
+                <p style={{ color: '#334155', lineHeight: '1.6', margin: 0 }}>{result.advice?.en || "No advice available."}</p>
               </div>
 
               <div style={{ background: '#eff6ff', padding: '15px', borderRadius: '10px', border: '1px dashed #3b82f6' }}>
@@ -137,7 +141,7 @@ function App() {
                   📊 Projected 6-Month Revenue: ₹{(result.forecast || 0).toLocaleString()}
                 </p>
                 <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                  Security: {result.security} | Storage: Cloud DB
+                  Security: {result.security || "Active"} | Storage: Cloud DB
                 </p>
               </div>
               
