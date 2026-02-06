@@ -1,9 +1,9 @@
+import os
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import io
 import pdfplumber
-import os
 from cryptography.fernet import Fernet
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.ext.declarative import declarative_base
@@ -13,11 +13,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- DATABASE CONFIGURATION ---
-# In production, set DATABASE_URL in your hosting environment
-#DATABASE_URL = os.getenv("DATABASE_URL", "mysql+mysqlconnector://root:PASSWORD@localhost/finhealth_db")
+# --- DATABASE CONFIGURATION (MySQL) ---
 DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
+
+# Safety Check: If DATABASE_URL is missing, use SQLite so the app doesn't crash during build
+if not DATABASE_URL:
+    DATABASE_URL = "sqlite:///./fallback.db"
+    print("⚠️ No DATABASE_URL found. Using local SQLite.")
+
+# Ensure the URL starts with mysql+mysqlconnector:// for SQLAlchemy
+if "mysql" in DATABASE_URL and "+mysqlconnector" not in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+mysqlconnector://")
+
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -33,21 +41,19 @@ class Assessment(Base):
 
 try:
     Base.metadata.create_all(bind=engine)
-    print("✅ Database Connected.")
+    print("✅ MySQL Database Connected.")
 except Exception as e:
     print(f"❌ Database Error: {e}")
 
 # --- SECURITY LAYER ---
-# Use a static key from environment variables so you don't lose access to data on restart
 SECRET_KEY = os.getenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
 cipher_suite = Fernet(SECRET_KEY.encode())
 
 app = FastAPI(title="SME FinHealth AI Backend")
 
-# Enable CORS for Production Frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, replace "*" with your actual frontend URL
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -69,8 +75,7 @@ async def upload_financials(file: UploadFile = File(...), industry: str = "Gener
             with pdfplumber.open(io.BytesIO(decrypted_contents)) as pdf:
                 for page in pdf.pages:
                     table = page.extract_table()
-                    if table:
-                        data.extend(table[1:]) 
+                    if table: data.extend(table[1:]) 
             df = pd.DataFrame(data, columns=["type", "category", "amount"])
             df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
         else:
@@ -103,25 +108,25 @@ async def upload_financials(file: UploadFile = File(...), industry: str = "Gener
         advice_en = (f"As a {industry} enterprise, your profit margin of {margin}% is {health_status}. "
                      f"Your estimated GST liability is ₹{tax_estimate}. Next quarter revenue is forecasted at ₹{growth_forecast}.")
 
-
-# In your return statement at the bottom of upload_financials:
+        # --- KEYS SYNCED WITH APP.JS ---
         return {
-            "total_rev": total_rev,      # Changed from 'revenue'
+            "total_rev": total_rev,
             "expense": total_exp,
-            "margin": profit,            # Match the frontend's 'Net Profit' label
-            "tax_estimate": tax_estimate, # Changed from 'tax_est'
+            "profit": profit,
+            "margin": profit, 
+            "tax_estimate": tax_estimate,
             "forecast": growth_forecast,
             "health": health_status,
-            "credit_rating": credit_rating, # Changed from 'credit_score'
+            "credit_rating": credit_rating,
+            "credit_score": credit_rating,
             "security": "AES-256 Active",
             "advice": {"en": advice_en}
         }
+
     except Exception as e:
         return {"error": f"Analysis failed: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-
     uvicorn.run(app, host="0.0.0.0", port=port)
-
