@@ -95,10 +95,10 @@ function App() {
       {result && (
         <div className="dashboard-content">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-            <MetricCard title="Total Revenue" value={`₹${result.revenue?.toLocaleString()}`} color="#3b82f6" />
-            <MetricCard title="Net Profit" value={`₹${result.profit?.toLocaleString()}`} color="#10b981" />
-            <MetricCard title="Tax Liability (GST)" value={`₹${result.tax_est?.toLocaleString()}`} color="#f59e0b" />
-            <MetricCard title="Credit Score" value={result.credit_score} color={result.credit_score === "High" ? "#059669" : "#dc2626"} />
+            <MetricCard title="Total Revenue" value={`₹${result.total_rev.toLocaleString()}`} color="#3b82f6" />
+            <MetricCard title="Net Profit" value={`₹${result.margin.toLocaleString()}`} color="#10b981" />
+            <MetricCard title="Tax Liability (GST)" value={`₹${result.tax_estimate.toLocaleString()}`} color="#f59e0b" />
+            <MetricCard title="Credit Score" value={result.credit_rating} color={result.credit_rating === "High" ? "#059669" : "#dc2626"} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px' }}>
