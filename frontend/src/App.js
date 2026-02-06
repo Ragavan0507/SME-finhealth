@@ -30,10 +30,11 @@ function App() {
     }
   };
 
+  // Fixed mapping: using the exact keys returned from main.py
   const chartData = result ? [
-    { name: 'Revenue', value: result.revenue },
-    { name: 'Expense', value: result.expense },
-    { name: 'Profit', value: result.profit }
+    { name: 'Revenue', value: result.revenue || 0 },
+    { name: 'Expense', value: result.expense || 0 },
+    { name: 'Profit', value: result.profit || 0 }
   ] : [];
 
   return (
@@ -95,10 +96,11 @@ function App() {
       {result && (
         <div className="dashboard-content">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-            <MetricCard title="Total Revenue" value={`₹${result.total_rev.toLocaleString()}`} color="#3b82f6" />
-            <MetricCard title="Net Profit" value={`₹${result.margin.toLocaleString()}`} color="#10b981" />
-            <MetricCard title="Tax Liability (GST)" value={`₹${result.tax_estimate.toLocaleString()}`} color="#f59e0b" />
-            <MetricCard title="Credit Score" value={result.credit_rating} color={result.credit_rating === "High" ? "#059669" : "#dc2626"} />
+            {/* Syncing variable names with Backend return keys */}
+            <MetricCard title="Total Revenue" value={`₹${(result.revenue || 0).toLocaleString()}`} color="#3b82f6" />
+            <MetricCard title="Net Profit" value={`₹${(result.profit || 0).toLocaleString()}`} color="#10b981" />
+            <MetricCard title="Tax Liability (GST)" value={`₹${(result.tax_est || 0).toLocaleString()}`} color="#f59e0b" />
+            <MetricCard title="Credit Score" value={result.credit_score || "N/A"} color={result.credit_score === "High" ? "#059669" : "#dc2626"} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px' }}>
@@ -132,7 +134,7 @@ function App() {
 
               <div style={{ background: '#eff6ff', padding: '15px', borderRadius: '10px', border: '1px dashed #3b82f6' }}>
                 <p style={{ margin: 0, color: '#1e3a8a', fontWeight: '600' }}>
-                  📊 Projected 6-Month Revenue: ₹{result.forecast?.toLocaleString()}
+                  📊 Projected 6-Month Revenue: ₹{(result.forecast || 0).toLocaleString()}
                 </p>
                 <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
                   Security: {result.security} | Storage: Cloud DB
