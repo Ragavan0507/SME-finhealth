@@ -15,8 +15,8 @@ load_dotenv()
 
 # --- DATABASE CONFIGURATION ---
 # In production, set DATABASE_URL in your hosting environment
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql+mysqlconnector://root:Lalith05!@localhost/finhealth_db")
-
+#DATABASE_URL = os.getenv("DATABASE_URL", "mysql+mysqlconnector://root:PASSWORD@localhost/finhealth_db")
+DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -116,4 +116,5 @@ async def upload_financials(file: UploadFile = File(...), industry: str = "Gener
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
+
     uvicorn.run(app, host="0.0.0.0", port=port)
