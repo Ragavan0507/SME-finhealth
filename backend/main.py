@@ -1,9 +1,10 @@
-import os
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import io
 import pdfplumber
+import os
+import urllib.parse as urlparse
 from cryptography.fernet import Fernet
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.ext.declarative import declarative_base
@@ -13,18 +14,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- DATABASE CONFIGURATION (MySQL) ---
+# --- DATABASE CONFIGURATION ---
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Safety Check: If DATABASE_URL is missing, use SQLite so the app doesn't crash during build
-if not DATABASE_URL:
+if DATABASE_URL:
+    # 1. Clean the URL: Remove 'ssl-mode' which crashes MySQL drivers
+    url_parts = list(urlparse.urlparse(DATABASE_URL))
+    query = urlparse.parse_qs(url_parts[4])
+    query.pop('ssl-mode', None)  # Remove the offending parameter
+    url_parts[4] = urlparse.urlencode(query, doseq=True)
+    DATABASE_URL = urlparse.urlunparse(url_parts)
+
+    # 2. Use PyMySQL dialect (Ensure 'pymysql' is in requirements.txt)
+    if DATABASE_URL.startswith("mysql://"):
+        DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
+else:
+    # Fallback to local SQLite if DATABASE_URL is missing
     DATABASE_URL = "sqlite:///./fallback.db"
-    print("⚠️ No DATABASE_URL found. Using local SQLite.")
 
-# Ensure the URL starts with mysql+mysqlconnector:// for SQLAlchemy
-if "mysql" in DATABASE_URL and "+mysqlconnector" not in DATABASE_URL:
-    DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+mysqlconnector://")
-
+# pool_pre_ping=True helps maintain connection with Cloud MySQL
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -75,7 +83,8 @@ async def upload_financials(file: UploadFile = File(...), industry: str = "Gener
             with pdfplumber.open(io.BytesIO(decrypted_contents)) as pdf:
                 for page in pdf.pages:
                     table = page.extract_table()
-                    if table: data.extend(table[1:]) 
+                    if table:
+                        data.extend(table[1:]) 
             df = pd.DataFrame(data, columns=["type", "category", "amount"])
             df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
         else:
@@ -108,13 +117,15 @@ async def upload_financials(file: UploadFile = File(...), industry: str = "Gener
         advice_en = (f"As a {industry} enterprise, your profit margin of {margin}% is {health_status}. "
                      f"Your estimated GST liability is ₹{tax_estimate}. Next quarter revenue is forecasted at ₹{growth_forecast}.")
 
-        # --- KEYS SYNCED WITH APP.JS ---
+        # KEYS SYNCED WITH APP.JS
         return {
             "total_rev": total_rev,
+            "revenue": total_rev,
             "expense": total_exp,
             "profit": profit,
-            "margin": profit, 
+            "margin": profit,
             "tax_estimate": tax_estimate,
+            "tax_est": tax_estimate,
             "forecast": growth_forecast,
             "health": health_status,
             "credit_rating": credit_rating,
